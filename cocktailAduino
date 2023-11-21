@@ -1,0 +1,124 @@
+﻿#include <SoftwareSerial.h>
+ 
+String string = "";//시리얼 메세지 변수
+
+int AA = 4;  // 메인모터
+int AB = 5;
+
+int BA = 6;  // 워터펌프1
+int BB = 7;
+int CA = 8;  // 워터펌프2
+int CB = 9;
+int DA = 10;  // 워터펌프3
+int DB = 11;
+int EA = 12;  // 워터펌프4
+int EB = 13;
+
+int state = 0;
+String str = "";
+String str2 = "";
+ 
+void setup()
+{
+  Serial.begin(9600);   //시리얼 모니터
+  Serial1.begin(9600); //블루투스 시리얼
+
+  pinMode(AA, OUTPUT);
+  pinMode(AB, OUTPUT);
+
+  pinMode(BA, OUTPUT);
+  pinMode(BB, OUTPUT);
+  pinMode(CA, OUTPUT);
+  pinMode(CB, OUTPUT);
+  pinMode(DA, OUTPUT);
+  pinMode(DB, OUTPUT);
+  pinMode(EA, OUTPUT);
+  pinMode(EB, OUTPUT);
+
+
+}
+ 
+void loop()
+{
+  while (Serial1.available()) { 
+    char value = (char)Serial1.read();
+    string += value;
+    delay(5);
+  }
+
+  if(string != ""){
+    state = 0;
+    str = "";
+    str2 = "";
+    Serial.println(string);
+    
+
+    if(string == "clear"){
+      digitalWrite(BB, HIGH);
+      delay(3000);
+      digitalWrite(BB, LOW);
+      digitalWrite(CB, HIGH);
+      delay(3000);
+      digitalWrite(CB, LOW);
+      digitalWrite(DB, HIGH);
+      delay(3000);
+      digitalWrite(DB, LOW);
+      digitalWrite(EB, HIGH);
+      delay(3000);
+      digitalWrite(EB, LOW);
+    }
+
+    //호스 정리 신호
+    
+    for(int i=0; i<string.length(); i++){
+      if(string[i] == 'h' && state == 0){
+        state = 3;
+        continue;
+      }
+      if(string[i] == 'a' && state == 0){
+        state = 1;
+        continue;
+      }
+      if(state == 1){
+        if(string[i] == 'b'){
+          state = 2;
+          continue;
+        }
+        str += string[i];
+      }
+      if(state == 2){
+        if(string[i] == 'a'){
+          digitalWrite(str.toInt(), HIGH);
+          delay(100*str2.toInt());
+          digitalWrite(str.toInt(), LOW);
+          state = 1;
+          str = "";
+          str2 = "";
+          continue;
+        }
+        if(string[i] == 'z'){
+          digitalWrite(str.toInt(), HIGH);
+          delay(100*str2.toInt());
+          digitalWrite(str.toInt(), LOW);
+          break;
+        }
+        str2 += string[i];
+      }
+      if(state == 3){
+        if(string[i] == 'z'){
+          digitalWrite(AA, HIGH);
+          delay(1000*str.toInt());
+          digitalWrite(AA, LOW);
+          break;
+        }
+        str += string[i];
+      }
+    }//a"포트번호(워터펌프 6,8,10,12포트)"b"지연시간(1,2,3,4...단위/0.1초)"...z(신호종료) 형식으로 신호를 받는다.
+    //ex : a6b10a8b30z 첫번째 펌프 1초 작동 후 두번째 펌프 3초 작동 후 작동 종료
+    //h"작동시간(단위/초)"...z 형식으로 신호를 받는다.
+  }
+  string = "";
+  if (Serial.available()) {         
+    Serial1.write(Serial.read());  //시리얼 모니터 내용을 블루투스 측에 입력
+  }
+}
